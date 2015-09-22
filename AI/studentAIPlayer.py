@@ -198,12 +198,8 @@ class AIPlayer(Player):
             print "better than other queen"
 
         # Good
-<<<<<<< HEAD
         if currentState.inventories[myID].foodCount > \
-                prevState.inventories[oppID].foodCount:
-=======
-        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
->>>>>>> origin/master
+                currentState.inventories[oppID].foodCount:
             runTotal += 0.65
             numChecks += 1
             #print "more food"
@@ -379,18 +375,11 @@ class AIPlayer(Player):
                         runTotal += 0.15
                         numChecks += 1
 
-<<<<<<< HEAD
-        if numChecks == 0:
-            print "zeroooo"
-            return 0.01
-        return (runTotal/numChecks)
-=======
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
             numChecks = 1
 
         return (runTotal / numChecks)
->>>>>>> origin/master
 
     ##
     # getAttack
