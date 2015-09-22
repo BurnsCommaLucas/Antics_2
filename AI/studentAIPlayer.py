@@ -186,8 +186,7 @@ class AIPlayer(Player):
             return 0.0
         elif currentState.inventories[myID].getQueen() == None:
             return 0.0
-        elif currentState.inventories[myID].getAnthill().captureHealth <= 0 \
-                :
+        elif currentState.inventories[myID].getAnthill().captureHealth <= 0:
             return 0.0
 
         # Better
@@ -209,10 +208,30 @@ class AIPlayer(Player):
             runTotal += 0.35
             numChecks += 1
 
-        if prevState.inventories[myID].
+        if prevState.inventories[myID].getAnthill().captureHealth > \
+                currentState.inventories[myID].getAnthill().captureHealth:
+            runTotal += 0.35
+            numChecks += 1
 
         # Worse
+        myQueen = currentState.inventories[myID].getQueen()
+        # Find ants within 2 of queen, if they are enemy ants, negative score
+        print "New Turn:"
+        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
+                print testCoord[0], testCoord[1]
+                if legalCoord(testCoord):
+                    if getAntAt(currentState, testCoord) is not None \
+                            and getAntAt(currentState, testCoord).player:
+                        print "DANGER"
+                        runTotal += 0.15
+                        numChecks += 1
 
+        # PREVENT DIVIDE BY 0 ERROR
+        if numChecks == 0:
+            numChecks = 1
 
         return (runTotal / numChecks)
 
@@ -236,7 +255,7 @@ class AIPlayer(Player):
     # Return: A coordinate that matches one of the entries of enemyLocations. ((int,int))
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
-        return None
+        return enemyLocations[random.randint(0, len(enemyLocations) - 1)]
 
 
     ##
