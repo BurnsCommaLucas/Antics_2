@@ -191,15 +191,19 @@ class AIPlayer(Player):
             return 0.0
 
         # Better
-        if currentState.inventories[myID].getQueen().health > \
+        if prevState.inventories[oppID].getQueen().health > \
             currentState.inventories[oppID].getQueen().health:
             runTotal += 0.85
             numChecks += 1
             print "better than other queen"
 
         # Good
+<<<<<<< HEAD
         if currentState.inventories[myID].foodCount > \
                 prevState.inventories[oppID].foodCount:
+=======
+        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
+>>>>>>> origin/master
             runTotal += 0.65
             numChecks += 1
             #print "more food"
@@ -349,14 +353,43 @@ class AIPlayer(Player):
 
 
         # Bad
+        if currentState.inventories[oppID].foodCount > prevState.inventories[oppID].foodCount:
+            runTotal += 0.35
+            numChecks += 1
 
+        if prevState.inventories[myID].getAnthill().captureHealth > \
+                currentState.inventories[myID].getAnthill().captureHealth:
+            runTotal += 0.35
+            numChecks += 1
 
         # Worse
+        myQueen = currentState.inventories[myID].getQueen()
+        # Find ants within 2 of queen, if they are enemy ants, negative score
+        print "New Turn:"
+        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
+                print testCoord[0], testCoord[1]
+                if legalCoord(testCoord):
+                    if getAntAt(currentState, testCoord) is not None \
+                            and getAntAt(currentState, testCoord).player:
+                        print "DANGER"
+                        runTotal += 0.15
+                        numChecks += 1
 
+<<<<<<< HEAD
         if numChecks == 0:
             print "zeroooo"
             return 0.01
         return (runTotal/numChecks)
+=======
+        # PREVENT DIVIDE BY 0 ERROR
+        if numChecks == 0:
+            numChecks = 1
+
+        return (runTotal / numChecks)
+>>>>>>> origin/master
 
     ##
     # getAttack
@@ -378,7 +411,7 @@ class AIPlayer(Player):
     # Return: A coordinate that matches one of the entries of enemyLocations. ((int,int))
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
-        return None
+        return enemyLocations[random.randint(0, len(enemyLocations) - 1)]
 
 
     ##
