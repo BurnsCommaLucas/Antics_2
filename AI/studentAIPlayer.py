@@ -125,6 +125,7 @@ class AIPlayer(Player):
             elif moveEvals[i] > bestMove:
                 bestMove = moveEvals[i]
                 bestIndex = i
+        print moveEvals[bestIndex]
         return moveList[bestIndex]
 
 
@@ -194,11 +195,155 @@ class AIPlayer(Player):
             currentState.inventories[oppID].getQueen().health:
             runTotal += 0.85
             numChecks += 1
+            print "better than other queen"
 
         # Good
-        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
+        if currentState.inventories[myID].foodCount > \
+                currentState.inventories[oppID].foodCount:
             runTotal += 0.65
             numChecks += 1
+            #print "more food"
+
+        #enemy before and after inventories
+        enemyInvPrev = prevState.inventories[oppID]
+        enemyInvAft = currentState.inventories[oppID]
+
+        #my before and after inventories
+        myInvPrev = prevState.inventories[myID]
+        myInvAft = currentState.inventories[myID]
+        #my ant list
+        myAntListPrev = myInvPrev.ants
+        myAntListAft = myInvAft.ants
+        #workers before and after
+        workerPrev = []
+        workerAft = []
+        workerPrevCarrying = []
+        workerPrevNot = []
+        workerAftCarrying = []
+        workerAftNot = []
+        for ant in myAntListPrev:
+            if ant.type == WORKER:
+                if ant.carrying:
+                    workerPrevCarrying.append(ant)
+                else:
+                    workerPrevNot.append(ant)
+                workerPrev.append(ant)
+
+        for ant in myAntListAft:
+              if ant.type == WORKER:
+                if ant.carrying:
+                    workerAftCarrying.append(ant)
+                else:
+                    workerAftNot.append(ant)
+                workerAft.append(ant)          
+
+        #kill enemy ant
+        enemyAntCountPrev = len(enemyInvPrev.ants)
+        enemyAntCountAft = len(enemyInvAft.ants)
+        if enemyAntCountAft < enemyAntCountPrev:
+            runTotal+= 0.65
+            numChecks += 1
+            print "killed enemy ant"
+
+        #enemy structure health reduced
+        enemyTunnelPrevHealth = enemyInvPrev.constrs[1].captureHealth
+        enemyTunnelAftHealth = enemyInvAft.constrs[1].captureHealth
+
+        enemyHillPrevHealth = enemyInvPrev.constrs[0].captureHealth
+        enemyHillAftHealth = enemyInvAft.constrs[0].captureHealth
+
+        if enemyTunnelAftHealth < enemyTunnelPrevHealth or enemyHillPrevHealth < enemyHillAftHealth:
+            runTotal+=0.65
+            numChecks +=1
+            print "damaged enemy ant hill"
+        #get closer to ant on own side
+
+
+        #ants that aren't carrying get closer to food
+        if len(workerPrevNot) < len(workerAftNot):
+            runTotal += 0.9
+            numChecks +=1
+            print "ant is now carrying"
+
+        closestFoodDist = 99999
+        closestFoodCoord = None
+        foodCoords = []
+        for x in range(0, 10):
+            for y in range(0,4):
+                currItem = getConstrAt(currentState, (x,y))
+                #print(currItem)
+                if currItem != None and currItem.type == FOOD:
+                    foodCoords.append(currItem.coords)
+        closestDistancesPrev = []
+        closestCoordsPrev = []
+        sumPrev = 0
+        sumAft = 0
+        for ant in workerPrevNot:
+            for coord in foodCoords:
+                currDist = stepsToReach (prevState, ant.coords, coord)
+                if currDist < closestFoodDist:
+                    closestFoodDist = currDist
+                    closestFoodCoord = coord
+            closestDistancesPrev.append(closestFoodDist)
+            closestCoordsPrev.append(closestFoodCoord)
+            sumPrev += closestFoodDist
+        closestFoodDist = 99999
+        closestFoodCoord = None
+        closestDistancesAft = []
+        closestCoordsAft = []
+        for ant in workerAftNot:
+            for coord in foodCoords:
+                currDist = stepsToReach (currentState, ant.coords, coord)
+                if currDist < closestFoodDist:
+                    closestFoodDist = currDist
+                    closestFoodCoord = coord
+            closestDistancesAft.append(closestFoodDist)
+            closestCoordsAft.append(closestFoodCoord)
+            sumAft += closestFoodDist
+        if sumAft < sumPrev:
+            runTotal+=0.8
+            numChecks +=1
+
+        #ants that are carrying get closer to tunnel
+        #workerPrevCarrying
+        #worerAftCarrying
+        tunnelCoords = []
+        for x in range(0, 10):
+            for y in range(0,4):
+                currItem = getConstrAt(currentState, (x,y))
+                #print(currItem)
+                if currItem != None and (currItem.type == ANTHILL or currItem.type == TUNNEL):
+                    tunnelCoords.append(currItem.coords)
+        closestTunnDist = 99999
+        closestPrevDist = 0
+        for ant in workerPrevCarrying:
+            for coord in tunnelCoords:
+                currDist = stepsToReach(prevState, ant.coords, coord)
+                if currDist < closestTunnDist:
+                    closestTunnDist = currDist
+            closestPrevDist += closestTunnDist
+
+        closestTunnDist = 99999
+        closestAftDist = 0
+        for ant in workerAftCarrying:
+            for coord in tunnelCoords:
+                currDist = stepsToReach(currentState, ant.coords, coord)
+                if currDist < closestTunnDist:
+                    closestTunnDist = currDist
+            closestAftDist += closestTunnDist
+
+        if closestAftDist < closestPrevDist:
+            runTotal+=0.8
+            numChecks +=1
+
+
+        # for ant in workerPrevCarrying:
+        #     for coord in tunnelCoords:
+                #currDist = stepsToReach()
+
+
+
+
 
         # Neutral
 
@@ -216,6 +361,7 @@ class AIPlayer(Player):
         # Worse
         myQueen = currentState.inventories[myID].getQueen()
         # Find ants within 2 of queen, if they are enemy ants, negative score
+        badAnts = getAntList(currentState, pid = oppID)
         print "New Turn:"
         print "Queen at ", myQueen.coords[0], myQueen.coords[1]
         for i in range(-2, 3):
@@ -223,8 +369,8 @@ class AIPlayer(Player):
                 testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
                 print testCoord[0], testCoord[1]
                 if legalCoord(testCoord):
-                    if getAntAt(currentState, testCoord) is not None \
-                            and getAntAt(currentState, testCoord).player:
+                    if getAntAt(currentState, testCoord) \
+                            and # ANT IS BAD:
                         print "DANGER"
                         runTotal += 0.15
                         numChecks += 1
