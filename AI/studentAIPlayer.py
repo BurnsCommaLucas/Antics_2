@@ -117,15 +117,21 @@ class AIPlayer(Player):
         for move in moveList:
             moveEvals.append(self.prediction(currentState.clone(), currentState.clone(), move))
 
+        print len(moveEvals), "moves available"
+
         bestMove = 0.0
         bestIndex = 0
         for i in range(0, len(moveEvals)):
+            print "checking move", i
             if moveEvals[i] == 1.0:
                 return moveList[i]
             elif moveEvals[i] > bestMove:
                 bestMove = moveEvals[i]
                 bestIndex = i
-        print moveEvals[bestIndex]
+
+        print bestMove
+        if bestMove == 0.0:
+            pass
         return moveList[bestIndex]
 
 
@@ -143,7 +149,7 @@ class AIPlayer(Player):
             currentState.board[startCoord[0]][startCoord[1]].ant = None
             #put ant at last loc in coordList
             currentState.board[endCoord[0]][endCoord[1]].ant = antToMove
-            return self.pointValue(prevState, currentState)
+            return self.pointValue(prevState, currentState, move)
         elif move.moveType == BUILD:
             coord = move.coordList[0]
             currentPlayerInv = currentState.inventories[currentState.whoseTurn]
@@ -162,9 +168,9 @@ class AIPlayer(Player):
                 currentState.board[coord[0]][coord[1]].ant = ant
                 currentState.inventories[currentState.whoseTurn].ants.append(ant)
 
-            return self.pointValue(prevState, currentState)
+            return self.pointValue(prevState, currentState, move)
 
-    def pointValue(self, prevState, currentState):
+    def pointValue(self, prevState, currentState, move):
         myID = self.playerId
         oppID = PLAYER_ONE
 
@@ -274,6 +280,7 @@ class AIPlayer(Player):
                 #print(currItem)
                 if currItem != None and currItem.type == FOOD:
                     foodCoords.append(currItem.coords)
+
         closestDistancesPrev = []
         closestCoordsPrev = []
         sumPrev = 0
@@ -287,6 +294,7 @@ class AIPlayer(Player):
             closestDistancesPrev.append(closestFoodDist)
             closestCoordsPrev.append(closestFoodCoord)
             sumPrev += closestFoodDist
+
         closestFoodDist = 99999
         closestFoodCoord = None
         closestDistancesAft = []
@@ -314,6 +322,7 @@ class AIPlayer(Player):
                 #print(currItem)
                 if currItem != None and (currItem.type == ANTHILL or currItem.type == TUNNEL):
                     tunnelCoords.append(currItem.coords)
+
         closestTunnDist = 99999
         closestPrevDist = 0
         for ant in workerPrevCarrying:
@@ -349,31 +358,32 @@ class AIPlayer(Player):
 
 
         # Bad
-        if currentState.inventories[oppID].foodCount > prevState.inventories[oppID].foodCount:
-            runTotal += 0.35
+        if len(myAntListPrev) < len(myAntListAft) and len(myAntListAft) > 3:
+            runTotal += 0.15
             numChecks += 1
 
-        if prevState.inventories[myID].getAnthill().captureHealth > \
-                currentState.inventories[myID].getAnthill().captureHealth:
-            runTotal += 0.35
-            numChecks += 1
+        if
+
 
         # Worse
-        myQueen = currentState.inventories[myID].getQueen()
-        # Find ants within 2 of queen, if they are enemy ants, negative score
-        badAnts = getAntList(currentState, pid = oppID)
-        print "New Turn:"
-        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
-        for i in range(-2, 3):
-            for j in range(-2, 3):
-                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
-                print testCoord[0], testCoord[1]
-                if legalCoord(testCoord):
-                    if getAntAt(currentState, testCoord) \
-                            and # ANT IS BAD:
-                        print "DANGER"
-                        runTotal += 0.15
-                        numChecks += 1
+        # myQueen = currentState.inventories[myID].getQueen()
+        # # Find ants within 2 of queen, if they are enemy ants, negative score
+        # badAnts = getAntList(currentState, pid=oppID)
+        # print badAnts
+        # for i in range(-2, 3):
+        #     for j in range(-2, 3):
+        #         testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
+        #         if legalCoord(testCoord):
+        #             if getAntAt(currentState, testCoord) \
+        #                     and getAntAt(currentState, testCoord).player == oppID:
+        #                 print "DANGER"
+        #                 runTotal += 0.15
+        #                 numChecks += 1
+
+        for food in foodCoords:
+            if food == currentState.inventories[myID].getQueen().coords:
+                runTotal += 0.15
+                numChecks += 1
 
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
