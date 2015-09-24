@@ -31,6 +31,13 @@ class AIPlayer(Player):
     def __init__(self, inputPlayerId):
         super(AIPlayer, self).__init__(inputPlayerId, "ALPHA")
 
+    def closerTo(self, prevState, currentState, target):
+        myAntsPrev = prevState.inventories[self.playerId].ants
+        myAntsAft = currentState.inventories[self.playerId].ants
+        for i in range(0, len(myAntsPrev)):
+            if stepsToReach(currentState, myAntsAft[i].coords, target) < stepsToReach(prevState, myAntsPrev[i].coords, target):
+                return True
+        return False
     ##
     # getPlacement
     # Description: The getPlacement method corresponds to the
@@ -128,35 +135,16 @@ class AIPlayer(Player):
             elif moveEvals[i] > bestMove:
                 bestMove = moveEvals[i]
                 bestIndex = i
-<<<<<<< HEAD
 
-        print bestMove
-        if bestMove == 0.0:
-            pass
-=======
-        if moveEvals[bestIndex] <= 0.5:
+        # if moveEvals[bestIndex] <= 0.5:
+        #     return Move(END, None, None)
+        if moveEvals[bestIndex] == 0.0:
             return Move(END, None, None)
->>>>>>> master
         return moveList[bestIndex]
 
 
     def prediction(self, prevState, currentState, move):
         if move.moveType == MOVE_ANT:
-            startCoord = move.coordList[0]
-            endCoord = move.coordList[-1]
-
-            #take ant from start coord
-<<<<<<< HEAD
-            # antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
-            if getAntAt(currentState, startCoord) is not None:
-                antToMove = getAntAt(currentState, startCoord)
-=======
-            #antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
->>>>>>> master
-            #change ant's coords and hasMoved status
-            #antToMove.coords = (endCoord[0], endCoord[1])
-            #antToMove.hasMoved = True
-            #remove ant from location
             initCoord = move.coordList[0]
             finalCoord = move.coordList[-1]
             inventories = currentState.inventories[self.playerId]
@@ -220,16 +208,6 @@ class AIPlayer(Player):
             return 0.0
 
         # Better
-        if prevState.inventories[oppID].getQueen().health > \
-            currentState.inventories[oppID].getQueen().health:
-            runTotal += 0.85
-            numChecks += 1
-
-        # Good
-        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
-            runTotal += 0.65
-            numChecks += 1
-
         #enemy before and after inventories
         enemyInvPrev = prevState.inventories[oppID]
         enemyInvAft = currentState.inventories[oppID]
@@ -247,6 +225,27 @@ class AIPlayer(Player):
         workerPrevNot = []
         workerAftCarrying = []
         workerAftNot = []
+
+        myAntHill = currentState.inventories[myID].getAnthill()
+        myTunnels = currentState.inventories[myID].getTunnels()
+
+        myConstr = []
+        myConstr.append(myAntHill)
+        for tunnel in myTunnels:
+            myConstr.append(tunnel)
+
+        surroundingOpp = listAdjacent(currentState.inventories[oppID].getQueen().coords)
+        for space in surroundingOpp:
+            for ant in myAntListAft:
+                if ant.coords == space:
+                    runTotal += 0.85
+                    numChecks += 1
+
+        # Good
+        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
+            runTotal += 0.65
+            numChecks += 1
+
         for ant in myAntListPrev:
             if ant.type == WORKER:
                 if ant.carrying:
@@ -372,37 +371,45 @@ class AIPlayer(Player):
             runTotal +=0.1
             numChecks +=1
 
-
-
-
-
-        # Neutral
-
-
         # Bad
-        if len(myAntListPrev) < len(myAntListAft) and len(myAntListAft) > 3:
-            runTotal += 0.15
-            numChecks += 1
+        if len(myInvAft.ants) > 3 and len(myInvPrev.ants) < len(myInvAft.ants):
+            return 0.0
 
+        surroundingMe = listAdjacent(currentState.inventories[myID].getQueen().coords)
+        enemyAntList = enemyInvAft.ants
 
-        # Worse
-        myQueen = currentState.inventories[myID].getQueen()
-        # Find ants within 2 of queen, if they are enemy ants, negative score
-        badAnts = getAntList(currentState, oppID)
-        for i in range(-2, 3):
-            for j in range(-2, 3):
-                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
-<<<<<<< HEAD
-                for ant in badAnts:
-                    if ant.coords == testCoord:
-                        runTotal += 0.15
-                        numChecks += 1
-=======
-                if legalCoord(testCoord):
-                    print "DANGER"
+        for ant in enemyAntList:
+            for space in surroundingMe:
+                if ant.coords != space:
+                    runTotal += 0.85
+                    numChecks += 1
+                else:
                     runTotal += 0.15
                     numChecks += 1
->>>>>>> master
+
+        aroundConst = []
+        onConst = []
+        for const in myConstr:
+            aroundConst.append(listAdjacent(const.coords))
+            onConst.append(const.coords)
+
+        for ant in enemyAntList:
+            for coord in aroundConst:
+                # If enemy is NEXT TO construction
+                if ant.coords == coord and self.closerTo(prevState, currentState, coord):
+                    runTotal += 0.95
+                    numChecks += 1
+                else:
+                    runTotal += 0.35
+                    numChecks += 1
+            for coord in onConst:
+                # If enemy is ON construction
+                if ant.coords == coord and self.closerTo(prevState, currentState, coord):
+                    runTotal += 0.99
+                    numChecks += 1
+                else:
+                    runTotal += 0.15
+                    numChecks += 1
 
         for food in foodCoords:
             if food == currentState.inventories[myID].getQueen().coords:
@@ -413,6 +420,7 @@ class AIPlayer(Player):
         if numChecks == 0:
             numChecks = 1
 
+        # Return average move value
         return (runTotal / numChecks)
 
     ##
