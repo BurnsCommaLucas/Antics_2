@@ -376,21 +376,22 @@ class AIPlayer(Player):
         # Worse
         myQueen = currentState.inventories[myID].getQueen()
         # Find ants within 2 of queen, if they are enemy ants, negative score
+        badAnts = getAntList(currentState, pid = oppID)
+        print "New Turn:"
+        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
         for i in range(-2, 3):
             for j in range(-2, 3):
                 testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
                 if legalCoord(testCoord):
-                    if getAntAt(currentState, testCoord) is not None \
-                            and getAntAt(currentState, testCoord).player:
-                        runTotal += 0.15
-                        numChecks += 1
+                    print "DANGER"
+                    runTotal += 0.15
+                    numChecks += 1
 
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
             numChecks = 1
 
         return (runTotal / numChecks)
-
 
     ##
     # getAttack
