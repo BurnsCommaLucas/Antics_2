@@ -1,4 +1,6 @@
 # -*- coding: latin-1 -*-
+import sys
+sys.path.append("..")
 import random
 from Player import *
 from Constants import *
@@ -115,14 +117,11 @@ class AIPlayer(Player):
         moveEvals = []
 
         for move in moveList:
-            moveEvals.append(self.prediction(currentState.clone(), currentState.clone(), move))
-
-        print len(moveEvals), "moves available"
+            moveEvals.append(self.prediction(currentState.fastclone(), currentState.fastclone(), move))
 
         bestMove = 0.0
         bestIndex = 0
         for i in range(0, len(moveEvals)):
-            print "checking move", i
             if moveEvals[i] == 1.0:
                 return moveList[i]
             elif moveEvals[i] > bestMove:
@@ -141,7 +140,9 @@ class AIPlayer(Player):
             endCoord = move.coordList[-1]
 
             #take ant from start coord
-            antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
+            # antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
+            if getAntAt(currentState, startCoord) is not None:
+                antToMove = getAntAt(currentState, startCoord)
             #change ant's coords and hasMoved status
             antToMove.coords = (endCoord[0], endCoord[1])
             antToMove.hasMoved = True
@@ -149,7 +150,7 @@ class AIPlayer(Player):
             currentState.board[startCoord[0]][startCoord[1]].ant = None
             #put ant at last loc in coordList
             currentState.board[endCoord[0]][endCoord[1]].ant = antToMove
-            return self.pointValue(prevState, currentState, move)
+            return self.pointValue(prevState, currentState)
         elif move.moveType == BUILD:
             coord = move.coordList[0]
             currentPlayerInv = currentState.inventories[currentState.whoseTurn]
@@ -168,9 +169,9 @@ class AIPlayer(Player):
                 currentState.board[coord[0]][coord[1]].ant = ant
                 currentState.inventories[currentState.whoseTurn].ants.append(ant)
 
-            return self.pointValue(prevState, currentState, move)
+            return self.pointValue(prevState, currentState)
 
-    def pointValue(self, prevState, currentState, move):
+    def pointValue(self, prevState, currentState):
         myID = self.playerId
         oppID = PLAYER_ONE
 
@@ -362,23 +363,18 @@ class AIPlayer(Player):
             runTotal += 0.15
             numChecks += 1
 
-        if
-
 
         # Worse
-        # myQueen = currentState.inventories[myID].getQueen()
-        # # Find ants within 2 of queen, if they are enemy ants, negative score
-        # badAnts = getAntList(currentState, pid=oppID)
-        # print badAnts
-        # for i in range(-2, 3):
-        #     for j in range(-2, 3):
-        #         testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
-        #         if legalCoord(testCoord):
-        #             if getAntAt(currentState, testCoord) \
-        #                     and getAntAt(currentState, testCoord).player == oppID:
-        #                 print "DANGER"
-        #                 runTotal += 0.15
-        #                 numChecks += 1
+        myQueen = currentState.inventories[myID].getQueen()
+        # Find ants within 2 of queen, if they are enemy ants, negative score
+        badAnts = getAntList(currentState, oppID)
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
+                for ant in badAnts:
+                    if ant.coords == testCoord:
+                        runTotal += 0.15
+                        numChecks += 1
 
         for food in foodCoords:
             if food == currentState.inventories[myID].getQueen().coords:
