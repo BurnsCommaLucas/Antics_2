@@ -1,17 +1,20 @@
 # -*- coding: latin-1 -*-
+import sys
+sys.path.append("..")
 import random
 from Player import *
 from Constants import *
-from Construction import CONSTR_STATS
+from Construction import *
 from Ant import *
 from Move import Move
 from GameState import addCoords
 from AIPlayerUtils import *
+from Building import *
 
 
 ##
 # AIPlayer
-# Description: The responsbility of this class is to interact with the game by
+# Descriptiorundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesrundll32.exe sysdm.cpl,EditEnvironmentVariablesn: The responsbility of this class is to interact with the game by
 # deciding a valid move based on a given game state. This class has methods that
 # will be implemented by students in Dr. Nuxoll's AI course.
 #
@@ -38,7 +41,7 @@ class AIPlayer(Player):
     # coordinates (from their side of the board) that represent Locations
     # to place the anthill and 9 grass pieces. In setup phase 2, the player
     # will again be passed the state and needs to return a list of 2 tuple
-    # coordinates (on their opponent’s side of the board) which represent
+    # coordinates (on their opponentâ€™s side of the board) which represent
     # Locations to place the food sources. This is all that is necessary to
     # complete the setup phases.
     #
@@ -46,7 +49,7 @@ class AIPlayer(Player):
     #   currentState - The current state of the game at the time the Game is 
     #       requesting a placement from the player.(GameState)
     #
-    # Return: If setup phase 1: list of ten 2-tuples of ints -> [(x1,y1), (x2,y2),…,(x10,y10)]
+    # Return: If setup phase 1: list of ten 2-tuples of ints -> [(x1,y1), (x2,y2),â€¦,(x10,y10)]
     #       If setup phase 2: list of two 2-tuples of ints -> [(x1,y1), (x2,y2)]
     ##
     def getPlacement(self, currentState):
@@ -115,7 +118,7 @@ class AIPlayer(Player):
         moveEvals = []
 
         for move in moveList:
-            moveEvals.append(self.prediction(currentState.clone(), currentState.clone(), move))
+            moveEvals.append(self.prediction(currentState.fastclone(), currentState.fastclone(), move))
 
         bestMove = 0.0
         bestIndex = 0
@@ -125,7 +128,8 @@ class AIPlayer(Player):
             elif moveEvals[i] > bestMove:
                 bestMove = moveEvals[i]
                 bestIndex = i
-        print moveEvals[bestIndex]
+        if moveEvals[bestIndex] <= 0.5:
+            return Move(END, None, None)
         return moveList[bestIndex]
 
 
@@ -135,19 +139,31 @@ class AIPlayer(Player):
             endCoord = move.coordList[-1]
 
             #take ant from start coord
-            antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
+            #antToMove = currentState.board[startCoord[0]][startCoord[1]].ant
             #change ant's coords and hasMoved status
-            antToMove.coords = (endCoord[0], endCoord[1])
-            antToMove.hasMoved = True
+            #antToMove.coords = (endCoord[0], endCoord[1])
+            #antToMove.hasMoved = True
             #remove ant from location
-            currentState.board[startCoord[0]][startCoord[1]].ant = None
+            initCoord = move.coordList[0]
+            finalCoord = move.coordList[-1]
+            inventories = currentState.inventories[self.playerId]
+            myAnts = inventories.ants
+            index = 0
+            for ant in currentState.inventories[self.playerId].ants:
+                if ant.coords == initCoord:
+                    ant.coords = finalCoord
+                    ant.hasMoved = True
+                index +=1
+
+            #currentState.board[startCoord[0]][startCoord[1]].ant = None
             #put ant at last loc in coordList
-            currentState.board[endCoord[0]][endCoord[1]].ant = antToMove
+            #currentState.board[endCoord[0]][endCoord[1]].ant = antToMove
             return self.pointValue(prevState, currentState)
         elif move.moveType == BUILD:
             coord = move.coordList[0]
             currentPlayerInv = currentState.inventories[currentState.whoseTurn]
-
+            tunnel = currentPlayerInv.getAnthill()
+            tunnelCoords = tunnel.coords
             #subtract the cost of the item from the player's food count
             if move.buildType == TUNNEL:
                 currentPlayerInv.foodCount -= CONSTR_STATS[move.buildType][BUILD_COST]
@@ -159,7 +175,7 @@ class AIPlayer(Player):
 
                 ant = Ant(coord, move.buildType, currentState.whoseTurn)
                 ant.hasMoved = True
-                currentState.board[coord[0]][coord[1]].ant = ant
+                currentState.inventories[self.playerId].ants.append(ant)
                 currentState.inventories[currentState.whoseTurn].ants.append(ant)
 
             return self.pointValue(prevState, currentState)
@@ -195,18 +211,11 @@ class AIPlayer(Player):
             currentState.inventories[oppID].getQueen().health:
             runTotal += 0.85
             numChecks += 1
-            print "better than other queen"
 
         # Good
-<<<<<<< HEAD
-        if currentState.inventories[myID].foodCount > \
-                prevState.inventories[oppID].foodCount:
-=======
         if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
->>>>>>> origin/master
             runTotal += 0.65
             numChecks += 1
-            #print "more food"
 
         #enemy before and after inventories
         enemyInvPrev = prevState.inventories[oppID]
@@ -247,7 +256,6 @@ class AIPlayer(Player):
         if enemyAntCountAft < enemyAntCountPrev:
             runTotal+= 0.65
             numChecks += 1
-            print "killed enemy ant"
 
         #enemy structure health reduced
         enemyTunnelPrevHealth = enemyInvPrev.constrs[1].captureHealth
@@ -259,7 +267,6 @@ class AIPlayer(Player):
         if enemyTunnelAftHealth < enemyTunnelPrevHealth or enemyHillPrevHealth < enemyHillAftHealth:
             runTotal+=0.65
             numChecks +=1
-            print "damaged enemy ant hill"
         #get closer to ant on own side
 
 
@@ -267,7 +274,6 @@ class AIPlayer(Player):
         if len(workerPrevNot) < len(workerAftNot):
             runTotal += 0.9
             numChecks +=1
-            print "ant is now carrying"
 
         closestFoodDist = 99999
         closestFoodCoord = None
@@ -305,7 +311,7 @@ class AIPlayer(Player):
             closestCoordsAft.append(closestFoodCoord)
             sumAft += closestFoodDist
         if sumAft < sumPrev:
-            runTotal+=0.8
+            runTotal+=0.8+(sumPrev-sumAft)
             numChecks +=1
 
         #ants that are carrying get closer to tunnel
@@ -337,13 +343,18 @@ class AIPlayer(Player):
             closestAftDist += closestTunnDist
 
         if closestAftDist < closestPrevDist:
-            runTotal+=0.8
+            runTotal+=0.8+(closestPrevDist-closestAftDist)
             numChecks +=1
 
+        #prevent overextension of workers
+        if len(workerAft) > 2:
+            runTotal +=0.1
+            numChecks+=1
+            
 
-        # for ant in workerPrevCarrying:
-        #     for coord in tunnelCoords:
-                #currDist = stepsToReach()
+        if len(myAntListAft) > 4:
+            runTotal +=0.1
+            numChecks +=1
 
 
 
@@ -365,31 +376,21 @@ class AIPlayer(Player):
         # Worse
         myQueen = currentState.inventories[myID].getQueen()
         # Find ants within 2 of queen, if they are enemy ants, negative score
-        print "New Turn:"
-        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
         for i in range(-2, 3):
             for j in range(-2, 3):
                 testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
-                print testCoord[0], testCoord[1]
                 if legalCoord(testCoord):
                     if getAntAt(currentState, testCoord) is not None \
                             and getAntAt(currentState, testCoord).player:
-                        print "DANGER"
                         runTotal += 0.15
                         numChecks += 1
 
-<<<<<<< HEAD
-        if numChecks == 0:
-            print "zeroooo"
-            return 0.01
-        return (runTotal/numChecks)
-=======
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
             numChecks = 1
 
         return (runTotal / numChecks)
->>>>>>> origin/master
+
 
     ##
     # getAttack
