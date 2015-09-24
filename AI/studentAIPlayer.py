@@ -1,5 +1,6 @@
 # -*- coding: latin-1 -*-
 import sys
+import unittest
 sys.path.append("..")
 import random
 from Player import *
@@ -7,9 +8,11 @@ from Constants import *
 from Construction import *
 from Ant import *
 from Move import Move
-from GameState import addCoords
+from GameState import *
 from AIPlayerUtils import *
 from Building import *
+from Location import *
+from Inventory import *
 
 
 ##
@@ -169,7 +172,8 @@ class AIPlayer(Player):
                 currentPlayerInv.foodCount -= CONSTR_STATS[move.buildType][BUILD_COST]
 
                 tunnel = Building(coord, TUNNEL, currentState.whoseTurn)
-                currentState.board[coord[0]][coord[1]].constr = tunnel
+                currentPlayerInv.constrs.append(tunnel)
+                #currentState.board[coord[0]][coord[1]].constr = tunnel
             else:
                 currentPlayerInv.foodCount -= UNIT_STATS[move.buildType][COST]
 
@@ -227,7 +231,7 @@ class AIPlayer(Player):
         #my ant list
         myAntListPrev = myInvPrev.ants
         myAntListAft = myInvAft.ants
-        #workers before and after
+        #my workers before and after
         workerPrev = []
         workerAft = []
         workerPrevCarrying = []
@@ -267,25 +271,22 @@ class AIPlayer(Player):
         if enemyTunnelAftHealth < enemyTunnelPrevHealth or enemyHillPrevHealth < enemyHillAftHealth:
             runTotal+=0.65
             numChecks +=1
-        #get closer to ant on own side
 
 
         #ants that aren't carrying get closer to food
+
+        #if there are more ants carrying than before, then that's a good thing
         if len(workerPrevNot) < len(workerAftNot):
             runTotal += 0.9
             numChecks +=1
 
         closestFoodDist = 99999
-        closestFoodCoord = None
         foodCoords = []
         for x in range(0, 10):
             for y in range(0,4):
                 currItem = getConstrAt(currentState, (x,y))
-                #print(currItem)
                 if currItem != None and currItem.type == FOOD:
                     foodCoords.append(currItem.coords)
-        closestDistancesPrev = []
-        closestCoordsPrev = []
         sumPrev = 0
         sumAft = 0
         for ant in workerPrevNot:
@@ -293,39 +294,29 @@ class AIPlayer(Player):
                 currDist = stepsToReach (prevState, ant.coords, coord)
                 if currDist < closestFoodDist:
                     closestFoodDist = currDist
-                    closestFoodCoord = coord
-            closestDistancesPrev.append(closestFoodDist)
-            closestCoordsPrev.append(closestFoodCoord)
             sumPrev += closestFoodDist
         closestFoodDist = 99999
-        closestFoodCoord = None
-        closestDistancesAft = []
-        closestCoordsAft = []
         for ant in workerAftNot:
             for coord in foodCoords:
                 currDist = stepsToReach (currentState, ant.coords, coord)
                 if currDist < closestFoodDist:
                     closestFoodDist = currDist
-                    closestFoodCoord = coord
-            closestDistancesAft.append(closestFoodDist)
-            closestCoordsAft.append(closestFoodCoord)
             sumAft += closestFoodDist
         if sumAft < sumPrev:
-            runTotal+=0.8+(sumPrev-sumAft)
+            runTotal+=0.8+(sumPrev-sumAft)#score depends on how much closer the ant got
             numChecks +=1
 
         #ants that are carrying get closer to tunnel
-        #workerPrevCarrying
-        #worerAftCarrying
         tunnelCoords = []
+        #find out where the tunnel is
         for x in range(0, 10):
             for y in range(0,4):
                 currItem = getConstrAt(currentState, (x,y))
-                #print(currItem)
                 if currItem != None and (currItem.type == ANTHILL or currItem.type == TUNNEL):
                     tunnelCoords.append(currItem.coords)
         closestTunnDist = 99999
         closestPrevDist = 0
+        #find out how far the carrying workers are before the move
         for ant in workerPrevCarrying:
             for coord in tunnelCoords:
                 currDist = stepsToReach(prevState, ant.coords, coord)
@@ -335,6 +326,7 @@ class AIPlayer(Player):
 
         closestTunnDist = 99999
         closestAftDist = 0
+        #find out how far the carrying workers are after the move
         for ant in workerAftCarrying:
             for coord in tunnelCoords:
                 currDist = stepsToReach(currentState, ant.coords, coord)
@@ -343,15 +335,15 @@ class AIPlayer(Player):
             closestAftDist += closestTunnDist
 
         if closestAftDist < closestPrevDist:
-            runTotal+=0.8+(closestPrevDist-closestAftDist)
-            numChecks +=1
+            runTotal+=0.8+(closestPrevDist-closestAftDist)#how "good" the move is depends on how
+            numChecks +=1#much closer they got
 
         #prevent overextension of workers
-        if len(workerAft) > 2:
+        if len(workerAft) > 3:
             runTotal +=0.1
             numChecks+=1
             
-
+        #prevent overextension of ants in general
         if len(myAntListAft) > 4:
             runTotal +=0.1
             numChecks +=1
@@ -374,18 +366,6 @@ class AIPlayer(Player):
             numChecks += 1
 
         # Worse
-        myQueen = currentState.inventories[myID].getQueen()
-        # Find ants within 2 of queen, if they are enemy ants, negative score
-        badAnts = getAntList(currentState, pid = oppID)
-        print "New Turn:"
-        print "Queen at ", myQueen.coords[0], myQueen.coords[1]
-        for i in range(-2, 3):
-            for j in range(-2, 3):
-                testCoord = [myQueen.coords[0] + i, myQueen.coords[1] + j]
-                if legalCoord(testCoord):
-                    print "DANGER"
-                    runTotal += 0.15
-                    numChecks += 1
 
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
@@ -428,3 +408,25 @@ class AIPlayer(Player):
     def registerWin(self, hasWon):
         # method templaste, not implemented
         pass
+
+#Unit Test #1:
+#verifies that a MOVE move updates the state properly.
+#ant starts at (4,4) and moves to (4,3)
+board = [[Location((col, row)) for row in xrange(0,BOARD_LENGTH)] for col in xrange(0,BOARD_LENGTH)]
+neutralInventory = Inventory(NEUTRAL, [], [], 0)
+oneAnt = Ant((4,4), WORKER, 1)
+antArray = [oneAnt]
+p1Inventory = Inventory(PLAYER_ONE, [], [], 0)
+p2Inventory = Inventory(PLAYER_TWO, antArray, [], 3)
+state = GameState(board, [p1Inventory, p2Inventory, neutralInventory], PLAY_PHASE, PLAYER_ONE)
+move = Move(MOVE_ANT, [(4,4), (4,3)], PLAYER_TWO)
+player = AIPlayer(PLAYER_TWO)
+val = player.prediction(state, state, move)
+twoAnt = Ant((4,3), WORKER, 1)
+oneAntAft = state.inventories[PLAYER_TWO].ants[0]
+if oneAntAft.coords == (4,3):
+    print "Unit Test #1 passed"
+else:
+    print "Unit test did not pass."
+    print "Ant should have been at (4,3), but instead, it is at:"
+    print oneAntAft.coords
