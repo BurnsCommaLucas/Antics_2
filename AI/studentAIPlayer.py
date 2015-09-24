@@ -32,13 +32,14 @@ class AIPlayer(Player):
     #   inputPlayerId - The id to give the new player (int)
     ##
     def __init__(self, inputPlayerId):
-        super(AIPlayer, self).__init__(inputPlayerId, "ALPHA")
+        super(AIPlayer, self).__init__(inputPlayerId, "ALPHA TEAM (burnsl17 and alconcel16")
 
     def closerTo(self, prevState, currentState, target):
         myAntsPrev = prevState.inventories[self.playerId].ants
         myAntsAft = currentState.inventories[self.playerId].ants
         for i in range(0, len(myAntsPrev)):
-            if stepsToReach(currentState, myAntsAft[i].coords, target) < stepsToReach(prevState, myAntsPrev[i].coords, target):
+            if stepsToReach(currentState, myAntsAft[i].coords, target) < \
+                stepsToReach(prevState, myAntsPrev[i].coords, target):
                 return True
         return False
     ##
@@ -78,7 +79,8 @@ class AIPlayer(Player):
                     # Set the move if this space is empty
                     if currentState.board[x][y].constr == None and (x, y) not in moves:
                         move = (x, y)
-                        # Just need to make the space non-empty. So I threw whatever I felt like in there.
+                        # Just need to make the space non-empty. 
+                        # So I threw whatever I felt like in there.
                         currentState.board[x][y].constr == True
                 moves.append(move)
             return moves
@@ -95,7 +97,8 @@ class AIPlayer(Player):
                     # Set the move if this space is empty
                     if currentState.board[x][y].constr == None and (x, y) not in moves:
                         move = (x, y)
-                        # Just need to make the space non-empty. So I threw whatever I felt like in there.
+                        # Just need to make the space non-empty. 
+                        # So I threw whatever I felt like in there.
                         currentState.board[x][y].constr == True
                 moves.append(move)
             return moves
@@ -127,25 +130,43 @@ class AIPlayer(Player):
         moveList = listAllLegalMoves(currentState)
         moveEvals = []
 
+        # Evaluate every move and store the value in a list
         for move in moveList:
-            moveEvals.append(self.prediction(currentState.fastclone(), currentState.fastclone(), move))
+            moveEvals.append(self.prediction(currentState.fastclone(),\
+                currentState.fastclone(), move))
 
         bestMove = 0.0
         bestIndex = 0
+        # Iterate through the move evaluations to find the best
         for i in range(0, len(moveEvals)):
+            # If move has an eval of 1.0 (win condition, or other 
+            # top priority move) then execute that move
             if moveEvals[i] == 1.0:
                 return moveList[i]
             elif moveEvals[i] > bestMove:
                 bestMove = moveEvals[i]
                 bestIndex = i
 
-        # if moveEvals[bestIndex] <= 0.5:
-        #     return Move(END, None, None)
+        # If the best move found is 0.0 (lose condition, or very bad move), do nothing
         if moveEvals[bestIndex] == 0.0:
             return Move(END, None, None)
+
         return moveList[bestIndex]
 
-
+    ##
+    # prediction
+    # Description: Function that parses given moves and applies them to a fastClone()
+    # of the gameState in order to predict the outcome of each move.
+    #
+    # Parameters:
+    #   currentState - A fastClone of the current state of the game at the time, which
+    #       will be updated with the given move.(GameState)
+    #   prevState - A faslClone of the current state, which will not be modified, used to 
+    #       compare result of move with state of game before that move. (GameState)
+    #   move - A move object which is used to tell what move is being performed.
+    #
+    # Return: Result of pointValue assessment of given move [double]
+    ##
     def prediction(self, prevState, currentState, move):
         if move.moveType == MOVE_ANT:
             initCoord = move.coordList[0]
@@ -158,26 +179,19 @@ class AIPlayer(Player):
                     ant.coords = finalCoord
                     ant.hasMoved = True
                 index +=1
-
-            #currentState.board[startCoord[0]][startCoord[1]].ant = None
-            #put ant at last loc in coordList
-            #currentState.board[endCoord[0]][endCoord[1]].ant = antToMove
             return self.pointValue(prevState, currentState)
         elif move.moveType == BUILD:
             coord = move.coordList[0]
             currentPlayerInv = currentState.inventories[currentState.whoseTurn]
             tunnel = currentPlayerInv.getAnthill()
             tunnelCoords = tunnel.coords
-            #subtract the cost of the item from the player's food count
             if move.buildType == TUNNEL:
                 currentPlayerInv.foodCount -= CONSTR_STATS[move.buildType][BUILD_COST]
 
                 tunnel = Building(coord, TUNNEL, currentState.whoseTurn)
                 currentPlayerInv.constrs.append(tunnel)
-                #currentState.board[coord[0]][coord[1]].constr = tunnel
             else:
                 currentPlayerInv.foodCount -= UNIT_STATS[move.buildType][COST]
-
                 ant = Ant(coord, move.buildType, currentState.whoseTurn)
                 ant.hasMoved = True
                 currentState.inventories[self.playerId].ants.append(ant)
@@ -185,6 +199,19 @@ class AIPlayer(Player):
 
             return self.pointValue(prevState, currentState)
 
+    ##
+    # pointValue
+    # Description: Function that takes two gameStates and evaluates the 
+    #       move that has been performed
+    #
+    # Parameters:
+    #   currentState - A fastClone of the current state of the game at the time, which
+    #       has been updated with a move.(GameState)
+    #   prevState - A faslClone of the current state, which was not modified, used to 
+    #       compare result of move with state of game before that move. (GameState)
+    #   
+    # Return: 0.0 to 1.0 evaluation of the executed move [double]
+    ##
     def pointValue(self, prevState, currentState):
         myID = self.playerId
         oppID = PLAYER_ONE
@@ -192,6 +219,7 @@ class AIPlayer(Player):
         if myID == PLAYER_ONE:
             oppID = PLAYER_TWO
 
+        # Variables to hold data to assess the move quality
         runTotal = 0.0
         numChecks = 0
 
@@ -211,18 +239,19 @@ class AIPlayer(Player):
         elif currentState.inventories[myID].getAnthill().captureHealth <= 0:
             return 0.0
 
-        # Better
-        #enemy before and after inventories
+        # enemy before and after inventories
         enemyInvPrev = prevState.inventories[oppID]
         enemyInvAft = currentState.inventories[oppID]
 
-        #my before and after inventories
+        # my before and after inventories
         myInvPrev = prevState.inventories[myID]
         myInvAft = currentState.inventories[myID]
-        #my ant list
+
+        # my ant list
         myAntListPrev = myInvPrev.ants
         myAntListAft = myInvAft.ants
-        #my workers before and after
+
+        # my workers before and after
         workerPrev = []
         workerAft = []
         workerPrevCarrying = []
@@ -230,26 +259,23 @@ class AIPlayer(Player):
         workerAftCarrying = []
         workerAftNot = []
 
+        # Constructions on own side
         myAntHill = currentState.inventories[myID].getAnthill()
         myTunnels = currentState.inventories[myID].getTunnels()
-
         myConstr = []
         myConstr.append(myAntHill)
         for tunnel in myTunnels:
             myConstr.append(tunnel)
 
+        # If an ant has the chance to attack the queen, high value move
         surroundingOpp = listAdjacent(currentState.inventories[oppID].getQueen().coords)
         for space in surroundingOpp:
             for ant in myAntListAft:
                 if ant.coords == space:
-                    runTotal += 0.85
+                    runTotal += 0.9
                     numChecks += 1
 
-        # Good
-        if currentState.inventories[myID].foodCount > prevState.inventories[oppID].foodCount:
-            runTotal += 0.65
-            numChecks += 1
-
+        # Organizational: separates carrying an non-carrying ants
         for ant in myAntListPrev:
             if ant.type == WORKER:
                 if ant.carrying:
@@ -266,14 +292,14 @@ class AIPlayer(Player):
                     workerAftNot.append(ant)
                 workerAft.append(ant)          
 
-        #kill enemy ant
+        # kill enemy ant
         enemyAntCountPrev = len(enemyInvPrev.ants)
         enemyAntCountAft = len(enemyInvAft.ants)
         if enemyAntCountAft < enemyAntCountPrev:
             runTotal+= 0.65
             numChecks += 1
 
-        #enemy structure health reduced
+        # enemy structure health reduced
         enemyTunnelPrevHealth = enemyInvPrev.constrs[1].captureHealth
         enemyTunnelAftHealth = enemyInvAft.constrs[1].captureHealth
 
@@ -285,11 +311,11 @@ class AIPlayer(Player):
             numChecks +=1
 
 
-        #ants that aren't carrying get closer to food
+        # ants that aren't carrying get closer to food
 
-        #if there are more ants carrying than before, then that's a good thing
+        # if there are more ants carrying than before, then that's a good thing
         if len(workerPrevNot) < len(workerAftNot):
-            runTotal += 0.9
+            runTotal += 0.65
             numChecks +=1
 
         closestFoodDist = 99999
@@ -299,12 +325,9 @@ class AIPlayer(Player):
                 currItem = getConstrAt(currentState, (x,y))
                 if currItem != None and currItem.type == FOOD:
                     foodCoords.append(currItem.coords)
-<<<<<<< HEAD
 
         closestDistancesPrev = []
         closestCoordsPrev = []
-=======
->>>>>>> master
         sumPrev = 0
         sumAft = 0
         for ant in workerPrevNot:
@@ -322,7 +345,7 @@ class AIPlayer(Player):
                     closestFoodDist = currDist
             sumAft += closestFoodDist
         if sumAft < sumPrev:
-            runTotal+=0.8+(sumPrev-sumAft)#score depends on how much closer the ant got
+            runTotal+=0.5+(sumPrev-sumAft)#score depends on how much closer the ant got
             numChecks +=1
 
         #ants that are carrying get closer to tunnel
@@ -355,7 +378,7 @@ class AIPlayer(Player):
             closestAftDist += closestTunnDist
 
         if closestAftDist < closestPrevDist:
-            runTotal+=0.8+(closestPrevDist-closestAftDist)#how "good" the move is depends on how
+            runTotal+=0.65+(closestPrevDist-closestAftDist)#how "good" the move is depends on how
             numChecks +=1#much closer they got
 
         #prevent overextension of workers
@@ -368,13 +391,15 @@ class AIPlayer(Player):
             runTotal +=0.1
             numChecks +=1
 
-        # Bad
+        # If there are already 3 ants owned by the AI, 
+        # and the next move would make more, don't make more
         if len(myInvAft.ants) > 3 and len(myInvPrev.ants) < len(myInvAft.ants):
             return 0.0
 
+
         surroundingMe = listAdjacent(currentState.inventories[myID].getQueen().coords)
         enemyAntList = enemyInvAft.ants
-
+        # If there are enemy ants within a space of the queen, move away
         for ant in enemyAntList:
             for space in surroundingMe:
                 if ant.coords != space:
@@ -384,42 +409,35 @@ class AIPlayer(Player):
                     runTotal += 0.15
                     numChecks += 1
 
-<<<<<<< HEAD
-        aroundConst = []
+        # Finds the locations of all constructions owned by the AI
         onConst = []
         for const in myConstr:
-            aroundConst.append(listAdjacent(const.coords))
             onConst.append(const.coords)
 
+        # Finds if an enemy ant is on one of the AI's constructions
         for ant in enemyAntList:
-            for coord in aroundConst:
-                # If enemy is NEXT TO construction
-                if ant.coords == coord and self.closerTo(prevState, currentState, coord):
-                    runTotal += 0.95
-                    numChecks += 1
-                else:
-                    runTotal += 0.35
-                    numChecks += 1
             for coord in onConst:
                 # If enemy is ON construction
-                if ant.coords == coord and self.closerTo(prevState, currentState, coord):
-                    runTotal += 0.99
-                    numChecks += 1
-                else:
-                    runTotal += 0.15
-                    numChecks += 1
-=======
-        # Worse
->>>>>>> master
+                if ant.coords == coord:
+                    if self.closerTo(prevState, currentState, coord):
+                        runTotal += 0.99
+                        numChecks += 1
+                    else:
+                        runTotal += 0.01
+                        numChecks += 1
 
+        # If the queen is standing on food, move
         for food in foodCoords:
             if food == currentState.inventories[myID].getQueen().coords:
                 runTotal += 0.15
                 numChecks += 1
+            else:
+                runTotal += 0.5
+                numChecks += 1
 
         # PREVENT DIVIDE BY 0 ERROR
         if numChecks == 0:
-            numChecks = 1
+            return 0.0
 
         # Return average move value
         return (runTotal / numChecks)
@@ -458,9 +476,6 @@ class AIPlayer(Player):
     #
     def registerWin(self, hasWon):
         # method templaste, not implemented
-<<<<<<< HEAD
-        pass
-=======
         pass
 
 #Unit Test #1:
@@ -484,4 +499,3 @@ else:
     print "Unit test did not pass."
     print "Ant should have been at (4,3), but instead, it is at:"
     print oneAntAft.coords
->>>>>>> master
